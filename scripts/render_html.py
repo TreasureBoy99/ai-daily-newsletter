@@ -2,6 +2,7 @@
 """将 AI 日报 Markdown 渲染为 Newsletter 风格 HTML，可选截图。"""
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
