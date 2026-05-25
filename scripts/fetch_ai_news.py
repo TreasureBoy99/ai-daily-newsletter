@@ -176,6 +176,13 @@ RSS_SOURCES = [
         "name": "Product Hunt",
         "category": "tools",
     },
+    # --- Twitter/X via x-scraper ---
+    {
+        "url": "https://raw.githubusercontent.com/adminlove520/x-scraper/main/rss/tweets.xml",
+        "name": "X-Scraper (Twitter)",
+        "category": "community",
+        "ai_filter": True,
+    },
 ]
 
 
