@@ -472,11 +472,23 @@ def fetch_hn(cutoff: datetime, limit: int) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# GitHub API helper (supports token auth to avoid rate limits)
+# ---------------------------------------------------------------------------
+def _gh_headers() -> dict:
+    """Return headers for GitHub API, using GH_TOKEN env var if available."""
+    headers = {"User-Agent": "Mozilla/5.0 AI-Daily-Newsletter/1.0"}
+    token = os.environ.get("GH_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+# ---------------------------------------------------------------------------
 # GitHub Trending
 # ---------------------------------------------------------------------------
 def fetch_readme(repo_path: str) -> str:
     """Fetch README text for a GitHub repo (first 1000 chars). Returns empty string on failure."""
-    headers = {"User-Agent": "Mozilla/5.0 AI-Daily-Newsletter/1.0"}
+    headers = _gh_headers()
     for branch in ("main", "master"):
         try:
             url = f"https://raw.githubusercontent.com/{repo_path}/{branch}/README.md"
@@ -491,11 +503,12 @@ def fetch_readme(repo_path: str) -> str:
 def fetch_github_trending(limit: int) -> list[dict]:
     """Scrape GitHub Trending, fetch README for AI candidates, filter by README content."""
     candidates = []
+    headers = _gh_headers()
     try:
         resp = requests.get(
             "https://github.com/trending",
             params={"since": "daily"},
-            headers={"User-Agent": "Mozilla/5.0 AI-Daily-Newsletter/1.0"},
+            headers=headers,
             timeout=15,
         )
         resp.raise_for_status()
