@@ -324,61 +324,57 @@ def fetch_reddit(subreddits: list[str], cutoff: datetime, limit_per: int) -> lis
 
 
 # ---------------------------------------------------------------------------
-# Twitter/X (via autocli)
+# Twitter/X (via fxtwitter RSS)
 # ---------------------------------------------------------------------------
-def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
-    """Fetch AI-related tweets from Twitter timeline using autocli."""
+def fetch_twitter_rss(handle: str, cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch tweets from a Twitter handle via fxtwitter RSS feed."""
     results = []
+    curl_headers = [
+        "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "-H", "Accept: application/rss+xml, application/atom+xml, */*",
+    ]
     try:
-        # Run autocli twitter timeline and capture JSON output
-        result = subprocess.run(
-            ["autocli", "twitter", "timeline", "--limit", "50", "--format", "json"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        if result.returncode != 0:
-            print(f"[Twitter] Error: {result.stderr}", file=sys.stderr)
-            return []
-
-        tweets = json.loads(result.stdout)
-        for tweet in tweets:
+        url = f"https://fxtwitter.com/{handle}/feed.xml?count={limit}&safe=1"
+        xml = _curl_fetch(url, curl_headers)
+        feed = feedparser.parse(xml)
+        for entry in feed.entries:
             if len(results) >= limit:
                 break
 
-            text = tweet.get("text", "")
-            if not matches_ai(text):
-                continue
+            title = entry.get("title", "")
+            # Clean HTML from description
+            desc_raw = entry.get("summary", "") or ""
+            desc = BeautifulSoup(desc_raw, "html.parser").get_text()[:500]
 
-            # Parse created_at (format: "Fri May 29 02:03:51 +0000 2026")
-            created_str = tweet.get("created_at", "")
-            pub_date = None
-            if created_str:
-                try:
-                    from email.utils import parsedate_to_datetime
-                    pub_date = parsedate_to_datetime(created_str)
-                except Exception:
-                    pass
-
+            pub_date = parse_date(entry)
             if pub_date and pub_date < cutoff:
                 continue
 
             results.append({
-                "source": f"Twitter/@{tweet.get('author', '')}",
+                "source": f"Twitter/@{handle}",
                 "category": "community",
-                "title": text[:200] if text else "",
-                "url": tweet.get("url", ""),
+                "title": title,
+                "url": entry.get("link", ""),
                 "time": pub_date.isoformat() if pub_date else "",
-                "summary": text,
-                "likes": tweet.get("likes", 0),
-                "retweets": tweet.get("retweets", 0),
-                "views": tweet.get("views", 0),
+                "summary": desc,
             })
-    except subprocess.TimeoutExpired:
-        print("[Twitter] fetch timed out", file=sys.stderr)
     except Exception as e:
-        print(f"[Twitter] Error: {e}", file=sys.stderr)
+        print(f"[Twitter @{handle}] Error: {e}", file=sys.stderr)
     return results
+
+
+def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch AI-related tweets from multiple Twitter handles via fxtwitter RSS."""
+    # Popular AI news accounts to follow
+    handles = ["TheHackersNews", "simonw", "ylecun", "AndrewYNg", "AlphaSignalAI"]
+    all_results = []
+    for handle in handles:
+        results = fetch_twitter_rss(handle, cutoff, limit)
+        # Filter by AI keywords
+        for r in results:
+            if matches_ai(r.get("title", "") + " " + r.get("summary", "")):
+                all_results.append(r)
+    return all_results[:limit]
 
 
 # ---------------------------------------------------------------------------
