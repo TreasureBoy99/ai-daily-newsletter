@@ -324,57 +324,100 @@ def fetch_reddit(subreddits: list[str], cutoff: datetime, limit_per: int) -> lis
 
 
 # ---------------------------------------------------------------------------
-# Twitter/X (via fxtwitter RSS)
+# Twitter/X (dual source: fxtwitter RSS or autocli)
 # ---------------------------------------------------------------------------
-def fetch_twitter_rss(handle: str, cutoff: datetime, limit: int) -> list[dict]:
-    """Fetch tweets from a Twitter handle via fxtwitter RSS feed."""
+def fetch_twitter_via_autocli(cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch AI-related tweets from Twitter timeline using autocli."""
     results = []
-    curl_headers = [
-        "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "-H", "Accept: application/rss+xml, application/atom+xml, */*",
-    ]
     try:
-        url = f"https://fxtwitter.com/{handle}/feed.xml?count={limit}&safe=1"
-        xml = _curl_fetch(url, curl_headers)
-        feed = feedparser.parse(xml)
-        for entry in feed.entries:
+        result = subprocess.run(
+            ["autocli", "twitter", "timeline", "--limit", "50", "--format", "json"],
+            capture_output=True, text=True, timeout=60,
+        )
+        if result.returncode != 0:
+            print(f"[Twitter/autocli] Error: {result.stderr}", file=sys.stderr)
+            return []
+
+        tweets = json.loads(result.stdout)
+        for tweet in tweets:
             if len(results) >= limit:
                 break
-
-            title = entry.get("title", "")
-            # Clean HTML from description
-            desc_raw = entry.get("summary", "") or ""
-            desc = BeautifulSoup(desc_raw, "html.parser").get_text()[:500]
-
-            pub_date = parse_date(entry)
+            text = tweet.get("text", "")
+            if not matches_ai(text):
+                continue
+            created_str = tweet.get("created_at", "")
+            pub_date = None
+            if created_str:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    pub_date = parsedate_to_datetime(created_str)
+                except Exception:
+                    pass
             if pub_date and pub_date < cutoff:
                 continue
-
             results.append({
-                "source": f"Twitter/@{handle}",
+                "source": f"Twitter/@{tweet.get('author', '')}",
                 "category": "community",
-                "title": title,
-                "url": entry.get("link", ""),
+                "title": text[:200] if text else "",
+                "url": tweet.get("url", ""),
                 "time": pub_date.isoformat() if pub_date else "",
-                "summary": desc,
+                "summary": text,
+                "likes": tweet.get("likes", 0),
+                "retweets": tweet.get("retweets", 0),
+                "views": tweet.get("views", 0),
             })
+    except subprocess.TimeoutExpired:
+        print("[Twitter/autocli] fetch timed out", file=sys.stderr)
     except Exception as e:
-        print(f"[Twitter @{handle}] Error: {e}", file=sys.stderr)
+        print(f"[Twitter/autocli] Error: {e}", file=sys.stderr)
     return results
 
 
-def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
-    """Fetch AI-related tweets from multiple Twitter handles via fxtwitter RSS."""
-    # Popular AI news accounts to follow
+def fetch_twitter_via_fxtwitter(cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch tweets from Twitter handles via fxtwitter RSS feed."""
     handles = ["TheHackersNews", "simonw", "ylecun", "AndrewYNg", "AlphaSignalAI"]
     all_results = []
     for handle in handles:
-        results = fetch_twitter_rss(handle, cutoff, limit)
-        # Filter by AI keywords
-        for r in results:
-            if matches_ai(r.get("title", "") + " " + r.get("summary", "")):
-                all_results.append(r)
+        try:
+            curl_headers = [
+                "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "-H", "Accept: application/rss+xml, application/atom+xml, */*",
+            ]
+            url = f"https://fxtwitter.com/{handle}/feed.xml?count={limit}&safe=1"
+            xml = _curl_fetch(url, curl_headers)
+            feed = feedparser.parse(xml)
+            for entry in feed.entries:
+                if len(all_results) >= limit * len(handles):
+                    break
+                title = entry.get("title", "")
+                desc_raw = entry.get("summary", "") or ""
+                desc = BeautifulSoup(desc_raw, "html.parser").get_text()[:500]
+                pub_date = parse_date(entry)
+                if pub_date and pub_date < cutoff:
+                    continue
+                if matches_ai(title + " " + desc):
+                    all_results.append({
+                        "source": f"Twitter/@{handle}",
+                        "category": "community",
+                        "title": title,
+                        "url": entry.get("link", ""),
+                        "time": pub_date.isoformat() if pub_date else "",
+                        "summary": desc,
+                    })
+        except Exception as e:
+            print(f"[Twitter/@{handle}] Error: {e}", file=sys.stderr)
     return all_results[:limit]
+
+
+def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch AI-related tweets. Uses autocli if TWITTER_SOURCE=autocli, else fxtwitter RSS."""
+    source = os.environ.get("TWITTER_SOURCE", "fxtwitter").lower()
+    if source == "autocli":
+        print("[Twitter] Using autocli mode", file=sys.stderr)
+        return fetch_twitter_via_autocli(cutoff, limit)
+    else:
+        print("[Twitter] Using fxtwitter RSS mode", file=sys.stderr)
+        return fetch_twitter_via_fxtwitter(cutoff, limit)
 
 
 # ---------------------------------------------------------------------------
