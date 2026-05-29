@@ -176,13 +176,8 @@ RSS_SOURCES = [
         "name": "Product Hunt",
         "category": "tools",
     },
-    # --- Twitter/X via x-scraper ---
-    {
-        "url": "https://raw.githubusercontent.com/adminlove520/x-scraper/main/rss/tweets.xml",
-        "name": "X-Scraper (Twitter)",
-        "category": "community",
-        "ai_filter": True,
-    },
+    # --- Twitter/X via autocli ---
+    # (handled separately in Phase 2, not via RSS)
 ]
 
 
@@ -325,6 +320,64 @@ def fetch_reddit(subreddits: list[str], cutoff: datetime, limit_per: int) -> lis
                 })
         except Exception as e:
             print(f"[Reddit r/{sub}] Error: {e}", file=sys.stderr)
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Twitter/X (via autocli)
+# ---------------------------------------------------------------------------
+def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
+    """Fetch AI-related tweets from Twitter timeline using autocli."""
+    results = []
+    try:
+        # Run autocli twitter timeline and capture JSON output
+        result = subprocess.run(
+            ["autocli", "twitter", "timeline", "--limit", "50", "--format", "json"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            print(f"[Twitter] Error: {result.stderr}", file=sys.stderr)
+            return []
+
+        tweets = json.loads(result.stdout)
+        for tweet in tweets:
+            if len(results) >= limit:
+                break
+
+            text = tweet.get("text", "")
+            if not matches_ai(text):
+                continue
+
+            # Parse created_at (format: "Fri May 29 02:03:51 +0000 2026")
+            created_str = tweet.get("created_at", "")
+            pub_date = None
+            if created_str:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    pub_date = parsedate_to_datetime(created_str)
+                except Exception:
+                    pass
+
+            if pub_date and pub_date < cutoff:
+                continue
+
+            results.append({
+                "source": f"Twitter/@{tweet.get('author', '')}",
+                "category": "community",
+                "title": text[:200] if text else "",
+                "url": tweet.get("url", ""),
+                "time": pub_date.isoformat() if pub_date else "",
+                "summary": text,
+                "likes": tweet.get("likes", 0),
+                "retweets": tweet.get("retweets", 0),
+                "views": tweet.get("views", 0),
+            })
+    except subprocess.TimeoutExpired:
+        print("[Twitter] fetch timed out", file=sys.stderr)
+    except Exception as e:
+        print(f"[Twitter] Error: {e}", file=sys.stderr)
     return results
 
 
@@ -547,14 +600,15 @@ def main():
             except Exception as e:
                 print(f"  [RSS] {name}: error - {e}", file=sys.stderr)
 
-    # --- Phase 2: HN, GitHub, HF, LinuxDo, Reddit (concurrent) ---
-    print("[INFO] Fetching HN, GitHub Trending, HF Papers, LinuxDo, Reddit...", file=sys.stderr)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    # --- Phase 2: HN, GitHub, HF, LinuxDo, Reddit, Twitter (concurrent) ---
+    print("[INFO] Fetching HN, GitHub Trending, HF Papers, LinuxDo, Reddit, Twitter...", file=sys.stderr)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         hn_future = executor.submit(fetch_hn, cutoff, args.limit)
         gh_future = executor.submit(fetch_github_trending, args.limit)
         hf_future = executor.submit(fetch_hf_papers, args.limit)
         linuxdo_future = executor.submit(fetch_linuxdo, cutoff, args.limit)
         reddit_future = executor.submit(fetch_reddit, ["MachineLearning", "artificial"], cutoff, args.limit)
+        twitter_future = executor.submit(fetch_twitter, cutoff, args.limit)
 
         for name, future in [
             ("HN", hn_future),
@@ -562,6 +616,7 @@ def main():
             ("HF Papers", hf_future),
             ("LinuxDo", linuxdo_future),
             ("Reddit", reddit_future),
+            ("Twitter", twitter_future),
         ]:
             try:
                 entries = future.result()
