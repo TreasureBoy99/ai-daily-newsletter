@@ -175,6 +175,16 @@ RSS_SOURCES = [
         "category": "research",
     },
     {
+        "url": "https://semianalysis.com/feed/",
+        "name": "SemiAnalysis",
+        "category": "industry",
+    },
+    {
+        "url": "https://stratechery.com/feed/",
+        "name": "Stratechery",
+        "category": "industry",
+    },
+    {
         "url": "https://garymarcus.substack.com/feed",
         "name": "Gary Marcus",
         "category": "policy",

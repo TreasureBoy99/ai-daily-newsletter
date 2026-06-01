@@ -6,7 +6,7 @@
 
 ## 功能特性
 
-- **30+ 数据源**：主流 AI 媒体、公司博客、 newsletters、论文、社区、大 V 博客
+- **35+ 数据源**：主流 AI 媒体、公司博客、 newsletters、论文、社区、大 V 博客、分析报告
 - **AI 关键词过滤**：自动过滤非 AI 相关内容
 - **多平台支持**：RSS、Hacker News Algolia API、网页抓取
 - **Cloudflare 绕过**：LinuxDo/Reddit 使用 curl 绕过 TLS 指纹
