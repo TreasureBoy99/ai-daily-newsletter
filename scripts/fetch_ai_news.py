@@ -155,6 +155,11 @@ RSS_SOURCES = [
         "category": "tools",
     },
     {
+        "url": "https://karpathy.github.io/feed.xml",
+        "name": "Andrej Karpathy",
+        "category": "research",
+    },
+    {
         "url": "https://garymarcus.substack.com/feed",
         "name": "Gary Marcus",
         "category": "policy",
