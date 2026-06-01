@@ -160,6 +160,21 @@ RSS_SOURCES = [
         "category": "research",
     },
     {
+        "url": "https://jalammar.github.io/feed.xml",
+        "name": "Jay Alammar",
+        "category": "research",
+    },
+    {
+        "url": "https://newsletter.languagemodels.co/feed",
+        "name": "Jay Alammar (Substack)",
+        "category": "research",
+    },
+    {
+        "url": "https://lilian.substack.com/feed",
+        "name": "Lilian Weng (The Cartella)",
+        "category": "research",
+    },
+    {
         "url": "https://garymarcus.substack.com/feed",
         "name": "Gary Marcus",
         "category": "policy",
