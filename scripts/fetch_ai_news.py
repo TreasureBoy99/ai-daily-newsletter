@@ -200,6 +200,37 @@ RSS_SOURCES = [
         "name": "Arxiv cs.LG",
         "category": "research",
     },
+    # --- AI Agents & Self-Evolution (Specialized) ---
+    {
+        "url": "https://lilianweng.github.io/posts/index.xml",
+        "name": "Lil'Log (Lilian Weng)",
+        "category": "research",
+    },
+    {
+        "url": "https://blog.langchain.dev/rss/",
+        "name": "LangChain Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://bair.berkeley.edu/blog/feed.xml",
+        "name": "BAIR Blog",
+        "category": "research",
+    },
+    {
+        "url": "https://huggingface.co/blog/feed.xml",
+        "name": "Hugging Face Blog",
+        "category": "tools",
+    },
+    {
+        "url": "http://export.arxiv.org/rss/cs.MA",
+        "name": "Arxiv cs.MA (Multi-Agent)",
+        "category": "research",
+    },
+    {
+        "url": "https://crfm.stanford.edu/feed.xml",
+        "name": "Stanford CRFM",
+        "category": "research",
+    },
     # --- Product ---
     {
         "url": "https://www.producthunt.com/feed",
