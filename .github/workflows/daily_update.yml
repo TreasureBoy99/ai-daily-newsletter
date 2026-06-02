@@ -28,7 +28,9 @@ jobs:
 
       - name: Run Fetch Script
         run: |
-          python scripts/fetch_ai_news.py --outdir data
+          python scripts/fetch_ai_news.py --outdir public/data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update latest and index JSON
         run: |
@@ -38,6 +40,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
+          git add public/data/
           git diff-index --quiet HEAD || git commit -m "chore: daily update AI news JSON [skip ci]"
           git push

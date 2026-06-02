@@ -8,10 +8,14 @@ import shutil
 from pathlib import Path
 
 def main():
-    data_dir = Path("data")
+    # Use public/data if it exists (for Next.js), otherwise fall back to data/
+    data_dir = Path("public/data")
     if not data_dir.exists():
-        data_dir.mkdir(parents=True, exist_ok=True)
-        print("Created data directory.")
+        if Path("data").exists():
+            data_dir = Path("data")
+        else:
+            data_dir.mkdir(parents=True, exist_ok=True)
+            print("Created public/data directory.")
 
     # Find all daily news JSON files matching ai-news-YYYY-MM-DD.json
     pattern = re.compile(r"^ai-news-(\d{4}-\d{2}-\d{2})\.json$")
