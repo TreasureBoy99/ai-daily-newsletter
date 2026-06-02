@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, Search, Share2, Moon, Sun, Flame, 
   BookOpen, Cpu, Wrench, Coins, Globe, MessagesSquare, 
-  Star, MessageSquare, Newspaper, X, ChevronRight, CornerDownRight, ListFilter, HelpCircle
+  Star, MessageSquare, Newspaper, X, ChevronRight, CornerDownRight, ListFilter, HelpCircle,
+  ArrowUp, ArrowDown, Sparkles
 } from 'lucide-react';
 
 const CATEGORIES_CONFIG = {
@@ -28,6 +29,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  // Pagination & Loading Optimization state
+  const [visibleLimit, setVisibleLimit] = useState(10);
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
 
   // Initialize Theme and load Archive Index
   useEffect(() => {
@@ -59,21 +64,31 @@ export default function Home() {
         } else if (dates.length > 0) {
           setSelectedDate(dates[0]);
         } else {
-          // If no index dates, try loading latest directly
           loadLatest();
         }
       } catch (err) {
         console.error('Error loading index:', err);
-        // Fallback to try loading latest
         loadLatest();
       }
     }
     loadIndex();
   }, []);
 
+  // Monitor scroll for Top/Bottom floating navigation buttons
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollButtons(window.scrollY > 250);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Fetch articles when selectedDate changes
   useEffect(() => {
     if (!selectedDate) return;
+
+    // Reset pagination limit on date change
+    setVisibleLimit(10);
 
     // Update URL parameter
     const url = new URL(window.location.href);
@@ -96,6 +111,11 @@ export default function Home() {
     }
     loadArticles();
   }, [selectedDate]);
+
+  // Reset pagination limit when category or search changes to ensure instant accurate results
+  useEffect(() => {
+    setVisibleLimit(10);
+  }, [currentCategory, searchQuery]);
 
   // Fallback to load latest.json directly
   async function loadLatest() {
@@ -181,18 +201,28 @@ export default function Home() {
     return Globe;
   };
 
-  // Filtered articles logic
-  const filteredArticles = articles.filter(article => {
-    const matchesCategory = currentCategory === 'all' || article.category === currentCategory;
-    const matchesSearch = !searchQuery || 
-      article.title?.toLowerCase().includes(searchQuery) ||
-      article.summary?.toLowerCase().includes(searchQuery) ||
-      article.source?.toLowerCase().includes(searchQuery);
-    return matchesCategory && matchesSearch;
-  });
+  // Performance Optimization: useMemo for filtering articles
+  // This completely eliminates redundant filtering on irrelevant state changes (e.g. scroll, drawer open, dark/light toggle)
+  const filteredArticles = useMemo(() => {
+    return articles.filter(article => {
+      const matchesCategory = currentCategory === 'all' || article.category === currentCategory;
+      const matchesSearch = !searchQuery || 
+        article.title?.toLowerCase().includes(searchQuery) ||
+        article.summary?.toLowerCase().includes(searchQuery) ||
+        article.source?.toLowerCase().includes(searchQuery);
+      return matchesCategory && matchesSearch;
+    });
+  }, [articles, currentCategory, searchQuery]);
+
+  // Sliced articles for progressive rendering chunk
+  const renderedArticles = useMemo(() => {
+    return filteredArticles.slice(0, visibleLimit);
+  }, [filteredArticles, visibleLimit]);
 
   // Unique sources count
-  const sourceCount = new Set(articles.map(a => a.source)).size;
+  const sourceCount = useMemo(() => {
+    return new Set(articles.map(a => a.source)).size;
+  }, [articles]);
 
   // Copy share link and toast
   const copyShareLink = () => {
@@ -211,8 +241,17 @@ export default function Home() {
     return articles.filter(a => a.category === cat).length;
   };
 
+  // Scroll Quick Actions
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen transition-colors duration-200 text-slate-800 dark:text-slate-100 bg-editorial-light dark:bg-editorial-dark antialiased">
+    <div className="min-h-screen transition-colors duration-200 text-slate-800 dark:text-slate-100 bg-editorial-light dark:bg-editorial-dark antialiased pb-12">
       
       {/* Navigation Header */}
       <header className="border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 bg-white/95 dark:bg-editorial-dark/95 backdrop-blur shadow-sm">
@@ -375,8 +414,8 @@ export default function Home() {
                   type="text" 
                   placeholder="搜索标题、关键字、信息源..." 
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value.toLowerCase().trim())}
-                  className="w-full text-xs pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-editorial-accent bg-slate-50 dark:bg-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
+                  onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
+                  className="w-full text-xs pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-editorial-accent bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all"
                 />
               </div>
             </div>
@@ -405,101 +444,145 @@ export default function Home() {
                 // No Results State
                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm">
                   <div className="text-4xl">🔍</div>
-                  <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">没有找到相关资讯</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">没有找到相关资讯</h3>
                   <p className="text-sm text-slate-400 max-w-sm mx-auto">
                     未能在今天的新闻中过滤出匹配当前检索词的内容，请尝试清除搜索框或选择其他栏目。
                   </p>
                 </div>
               ) : (
-                // Article Cards
-                filteredArticles.map((article, i) => {
-                  const cat = article.category || 'all';
-                  const catConfig = CATEGORIES_CONFIG[cat] || CATEGORIES_CONFIG.all;
-                  const IconComp = catConfig.icon;
-                  const SourceIcon = getDomainIcon(article.url);
-                  const isGithub = article.source === 'GitHub Trending';
-                  const isHN = article.source === 'Hacker News';
-                  const isHF = article.source === 'HuggingFace Papers';
+                <>
+                  {/* Optimized Progressive Rendering */}
+                  <div className="space-y-4">
+                    {renderedArticles.map((article, i) => {
+                      const cat = article.category || 'all';
+                      const catConfig = CATEGORIES_CONFIG[cat] || CATEGORIES_CONFIG.all;
+                      const IconComp = catConfig.icon;
+                      const SourceIcon = getDomainIcon(article.url);
+                      const isGithub = article.source === 'GitHub Trending';
+                      const isHN = article.source === 'Hacker News';
+                      const isHF = article.source === 'HuggingFace Papers';
 
-                  return (
-                    <article 
-                      key={i} 
-                      className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 relative flex flex-col justify-between"
-                    >
-                      <div className="space-y-3">
-                        {/* Meta Header */}
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-2">
-                            <span className="w-6 h-6 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center">
-                              <SourceIcon className="w-3.5 h-3.5 text-slate-500" />
-                            </span>
-                            <span className="font-semibold text-slate-600 dark:text-slate-300">{article.source}</span>
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <span className="text-slate-400">{formatTimeAgo(article.time)}</span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 ${catConfig.color}`}>
-                              <IconComp className="w-3 h-3" />
-                              <span>{catConfig.label}</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Title */}
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug hover:text-editorial-accent dark:hover:text-red-400 transition-colors">
-                          <a href={article.url} target="_blank" rel="noreferrer" className="hover:underline outline-none">
-                            {article.title}
-                          </a>
-                        </h3>
-
-                        {/* Summary */}
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed text-justify line-clamp-4">
-                          {article.summary || '今日此栏目无详细描述摘要，您可以点击右下方阅读原文浏览完整内容。'}
-                        </p>
-                      </div>
-
-                      {/* Card Footer Detail Metrics */}
-                      <div className="border-t border-slate-100 dark:border-slate-800 mt-4 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        {isGithub && (article.lang || article.stars) ? (
-                          <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
-                            {article.lang && <span className="inline-flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block mr-1.5" />{article.lang}</span>}
-                            {article.stars && <span className="inline-flex items-center"><Star className="w-3.5 h-3.5 text-amber-500 mr-1 fill-amber-500" />{article.stars} Stars</span>}
-                          </div>
-                        ) : isHN && article.heat ? (
-                          <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
-                            <span className="inline-flex items-center text-amber-600 dark:text-amber-500 font-bold bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded">
-                              {article.heat} points
-                            </span>
-                            {article.hn_url && <a href={article.hn_url} target="_blank" rel="noreferrer" className="hover:underline flex items-center"><MessageSquare className="w-3.5 h-3.5 mr-1" />查看讨论</a>}
-                          </div>
-                        ) : isHF ? (
-                          <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
-                            {article.heat && <span className="inline-flex items-center text-purple-600 bg-purple-50 dark:bg-purple-950/20 dark:text-purple-400 px-1.5 py-0.5 rounded font-bold">{article.heat} upvotes</span>}
-                            {article.github_url && <a href={article.github_url} target="_blank" rel="noreferrer" className="hover:underline flex items-center"><BookOpen className="w-3.5 h-3.5 mr-1" />论文 Arxiv</a>}
-                          </div>
-                        ) : (
-                          <div className="hidden sm:block" />
-                        )}
-
-                        <a 
-                          href={article.url} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="inline-flex items-center justify-center space-x-1 text-xs font-semibold text-editorial-accent hover:text-editorial-accentHover dark:text-red-400 dark:hover:text-red-300 transition-colors self-end"
+                      return (
+                        <article 
+                          key={i} 
+                          className="bg-white dark:bg-slate-900 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 relative flex flex-col justify-between"
                         >
-                          <span>阅读原文</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </a>
-                      </div>
-                    </article>
-                  );
-                })
+                          <div className="space-y-3">
+                            {/* Meta Header */}
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center space-x-2">
+                                <span className="w-6 h-6 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center">
+                                  <SourceIcon className="w-3.5 h-3.5 text-slate-500" />
+                                </span>
+                                <span className="font-semibold text-slate-600 dark:text-slate-300">{article.source}</span>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <span className="text-slate-400">{formatTimeAgo(article.time)}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 ${catConfig.color}`}>
+                                  <IconComp className="w-3 h-3" />
+                                  <span>{catConfig.label}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug hover:text-editorial-accent dark:hover:text-red-400 transition-colors">
+                              <a href={article.url} target="_blank" rel="noreferrer" className="hover:underline outline-none">
+                                {article.title}
+                              </a>
+                            </h3>
+
+                            {/* Summary */}
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed text-justify line-clamp-4">
+                              {article.summary || '今日此栏目无详细描述摘要，您可以点击右下方阅读原文浏览完整内容。'}
+                            </p>
+                          </div>
+
+                          {/* Card Footer Detail Metrics */}
+                          <div className="border-t border-slate-100 dark:border-slate-800 mt-4 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            {isGithub && (article.lang || article.stars) ? (
+                              <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
+                                {article.lang && <span className="inline-flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block mr-1.5" />{article.lang}</span>}
+                                {article.stars && <span className="inline-flex items-center"><Star className="w-3.5 h-3.5 text-amber-500 mr-1 fill-amber-500" />{article.stars} Stars</span>}
+                              </div>
+                            ) : isHN && article.heat ? (
+                              <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
+                                <span className="inline-flex items-center text-amber-600 dark:text-amber-500 font-bold bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded">
+                                  {article.heat} points
+                                </span>
+                                {article.hn_url && <a href={article.hn_url} target="_blank" rel="noreferrer" className="hover:underline flex items-center"><MessageSquare className="w-3.5 h-3.5 mr-1" />查看讨论</a>}
+                              </div>
+                            ) : isHF ? (
+                              <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
+                                {article.heat && <span className="inline-flex items-center text-purple-600 bg-purple-50 dark:bg-purple-950/20 dark:text-purple-400 px-1.5 py-0.5 rounded font-bold">{article.heat} upvotes</span>}
+                                {article.github_url && <a href={article.github_url} target="_blank" rel="noreferrer" className="hover:underline flex items-center"><BookOpen className="w-3.5 h-3.5 mr-1" />论文 Arxiv</a>}
+                              </div>
+                            ) : (
+                              <div className="hidden sm:block" />
+                            )}
+
+                            <a 
+                              href={article.url} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center justify-center space-x-1 text-xs font-semibold text-editorial-accent hover:text-editorial-accentHover dark:text-red-400 dark:hover:text-red-300 transition-colors self-end"
+                            >
+                              <span>阅读原文</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  {/* Load More Pagination Action Trigger */}
+                  {filteredArticles.length > visibleLimit ? (
+                    <div className="flex flex-col items-center py-6 space-y-2 border-t border-slate-200/60 dark:border-slate-800 mt-6">
+                      <p className="text-xs text-slate-400 font-medium">
+                        已加载 {visibleLimit} 条，共计 {filteredArticles.length} 条
+                      </p>
+                      <button
+                        onClick={() => setVisibleLimit(prev => prev + 10)}
+                        className="px-6 py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center space-x-2 cursor-pointer outline-none hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-editorial-accent animate-pulse" />
+                        <span>加载更多资讯</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-xs text-slate-400 font-medium flex items-center justify-center space-x-1.5">
+                      <span>🎉 已为您呈现全部 {filteredArticles.length} 条精彩资讯</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
           </main>
         </div>
       </div>
+
+      {/* Floating Scroll Actions Control Panel (Top & Bottom Navigation) */}
+      {showScrollButtons && (
+        <div className="fixed bottom-6 right-6 flex flex-col space-y-2.5 z-40 animate-fade-in">
+          <button
+            onClick={scrollToTop}
+            className="p-3 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-800 transition-all hover:scale-110 active:scale-95 outline-none cursor-pointer group"
+            title="回到顶部"
+          >
+            <ArrowUp className="w-4 h-4 group-hover:text-editorial-accent" />
+          </button>
+          <button
+            onClick={scrollToBottom}
+            className="p-3 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-800 transition-all hover:scale-110 active:scale-95 outline-none cursor-pointer group"
+            title="回到底部"
+          >
+            <ArrowDown className="w-4 h-4 group-hover:text-editorial-accent" />
+          </button>
+        </div>
+      )}
 
       {/* Floating Share Toast */}
       {toast && (
