@@ -84,6 +84,32 @@ description: 聚合 40+ AI 信息源，生成每日 AI 日报并更新 WebUI 索
 python3 scripts/render_html.py reports/YYYY-MM-DD/ai-daily.md --screenshot --split-by-section
 ```
 
+### 第 5 步：写入 Agent 记忆库（自学习积累）
+
+生成日报后，将关键洞察追加写入 Agent 长期记忆文件 `~/.openclaw/memory/ai-insights.jsonl`（每条一行 JSON Lines）：
+
+```bash
+mkdir -p ~/.openclaw/memory/
+```
+
+每期日报生成后，Agent 应将以下格式的记录追加到 `~/.openclaw/memory/ai-insights.jsonl`：
+
+```json
+{"timestamp": "YYYY-MM-DDTHH:MM:SSZ", "topic": "multi-agent|self-reflection|reasoning|tool-use|llm-optimization|safety|announcement|industry", "title": "标题", "insight": "Agent可学习的核心洞察（1-2句话）", "agent_relevance": "对此智能体自进化的意义", "source": "来源名称", "url": "https://..."}
+```
+
+**topic 分类标签参考**：
+- `multi-agent` — 多智能体协作相关
+- `self-reflection` — 自我反思/自我修正相关
+- `reasoning` — 推理能力/思维链相关
+- `tool-use` — 工具调用/Tool-Use 相关
+- `llm-optimization` — 模型优化/压缩/加速相关
+- `safety` — 安全对齐/可控性相关
+- `announcement` — 重磅产品/模型发布
+- `industry` — 行业动态/投融资
+
+此记忆库支持后续 Agent **跨期联想学习**：在处理新任务时，可检索 memory 中与当前问题相关的历史洞察，实现知识积累与推理增强。
+
 ## 规则
 
 1. **全部输出简体中文**，保留专业英文术语（如 LLM, RAG, Multi-Agent, Tool-Use）。

@@ -4,42 +4,32 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/data/(.*).json",
+      "source": "/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=3600, stale-while-revalidate=600"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     },
     {
-      "source": "/data/latest.json",
+      "source": "/api/news/dates",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, s-maxage=300, must-revalidate"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, must-revalidate" }
       ]
     },
     {
-      "source": "/data/index.json",
+      "source": "/api/news/index",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, s-maxage=300, must-revalidate"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, must-revalidate" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/api/news/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=3600, stale-while-revalidate=600" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     },
     {

@@ -482,51 +482,58 @@ def fetch_twitter(cutoff: datetime, limit: int) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Hacker News (Algolia API)
+# Hacker News (Algolia API) - optimized single-query with OR keywords
 # ---------------------------------------------------------------------------
 def fetch_hn(cutoff: datetime, limit: int) -> list[dict]:
-    """Fetch AI-related stories from Hacker News via Algolia API."""
+    """Fetch AI-related stories from Hacker News via Algolia API.
+
+    Uses a single combined query with OR keywords to minimize API calls.
+    """
     results = []
     keywords = ["AI", "LLM", "GPT", "Claude", "OpenAI", "Anthropic", "DeepSeek",
                 "Gemini", "Llama", "transformer", "RAG", "agent", "MCP"]
 
     timestamp = int(cutoff.timestamp())
 
-    for keyword in keywords:
-        try:
-            resp = requests.get(
-                "https://hn.algolia.com/api/v1/search",
-                params={
-                    "query": keyword,
-                    "tags": "story",
-                    "numericFilters": f"created_at_i>{timestamp}",
-                    "hitsPerPage": 10,
-                },
-                timeout=15,
-            )
-            resp.raise_for_status()
-            hits = resp.json().get("hits", [])
-            for hit in hits:
-                title = hit.get("title", "")
-                hn_url = f"https://news.ycombinator.com/item?id={hit['objectID']}"
-                points = hit.get("points", 0)
-                created = hit.get("created_at", "")
+    # Combine all keywords into a single OR query
+    combined_query = " ".join(f'"{kw}"' for kw in keywords)
 
-                if any(r["hn_url"] == hn_url for r in results):
-                    continue
+    try:
+        resp = requests.get(
+            "https://hn.algolia.com/api/v1/search",
+            params={
+                "query": combined_query,
+                "tags": "story",
+                "numericFilters": f"created_at_i>{timestamp}",
+                "hitsPerPage": min(limit * 3, 100),
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        hits = resp.json().get("hits", [])
 
-                results.append({
-                    "source": "Hacker News",
-                    "category": "community",
-                    "title": title,
-                    "url": hn_url,
-                    "time": created,
-                    "heat": str(points),
-                    "summary": "",
-                    "hn_url": hn_url,
-                })
-        except Exception as e:
-            print(f"[HN] Error searching '{keyword}': {e}", file=sys.stderr)
+        seen_hn_urls = set()
+        for hit in hits:
+            if len(results) >= limit:
+                break
+            hn_url = f"https://news.ycombinator.com/item?id={hit['objectID']}"
+
+            if hn_url in seen_hn_urls:
+                continue
+            seen_hn_urls.add(hn_url)
+
+            results.append({
+                "source": "Hacker News",
+                "category": "community",
+                "title": hit.get("title", ""),
+                "url": hn_url,
+                "time": hit.get("created_at", ""),
+                "heat": str(hit.get("points", 0)),
+                "summary": "",
+                "hn_url": hn_url,
+            })
+    except Exception as e:
+        print(f"[HN] Error: {e}", file=sys.stderr)
 
     results.sort(key=lambda x: int(x.get("heat", "0")), reverse=True)
     return results[:limit]
@@ -561,8 +568,10 @@ def fetch_readme(repo_path: str) -> str:
     return ""
 
 
-def fetch_github_trending(limit: int) -> list[dict]:
-    """Scrape GitHub Trending, fetch README for AI candidates, filter by README content."""
+def fetch_github_trending_html(limit: int) -> list[dict]:
+    """Scrape GitHub Trending, fetch README for AI candidates, filter by README content.
+    Used as fallback when GH_TOKEN is not available for GraphQL API.
+    """
     candidates = []
     headers = _gh_headers()
     try:
@@ -634,8 +643,74 @@ def fetch_github_trending(limit: int) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# HuggingFace Papers (via API)
+# GitHub Trending via GraphQL API (more reliable, higher rate limit)
 # ---------------------------------------------------------------------------
+def fetch_github_trending_graphql(limit: int) -> list[dict]:
+    """Fetch GitHub trending AI repos via GraphQL API with GH_TOKEN auth.
+
+    Falls back to HTML scraping if no token or GraphQL fails.
+    """
+    token = os.environ.get("GH_TOKEN", "").strip()
+    if not token:
+        print("[GitHub] No GH_TOKEN, falling back to HTML scraping", file=sys.stderr)
+        return fetch_github_trending_html(limit)
+
+    query = """
+    {
+      search(query: "stars:>5000 pushed:>%s", type: REPOSITORY, first: %d) {
+        nodes {
+          ... on Repository {
+            nameWithOwner
+            url
+            description
+            primaryLanguage { name }
+            stargazers { totalCount }
+          }
+        }
+      }
+    }
+    """ % (datetime.now().strftime("%Y-%m-%d"), limit)
+
+    try:
+        resp = requests.post(
+            "https://api.github.com/graphql",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={"query": query},
+            timeout=20,
+        )
+        if resp.status_code != 200:
+            print(f"[GitHub GraphQL] HTTP {resp.status_code}, falling back to HTML", file=sys.stderr)
+            return fetch_github_trending_html(limit)
+
+        data = resp.json()
+        nodes = data.get("data", {}).get("search", {}).get("nodes", [])
+        results = []
+        for node in nodes:
+            desc = node.get("description") or ""
+            if not matches_ai(desc):
+                continue
+            results.append({
+                "source": "GitHub Trending",
+                "category": "tools",
+                "title": node.get("nameWithOwner", "").split("/")[-1],
+                "url": node.get("url", ""),
+                "time": "",
+                "summary": desc[:300],
+                "lang": node.get("primaryLanguage", {}).get("name", "") or "",
+                "stars": str(node.get("stargazers", {}).get("totalCount", 0)),
+            })
+        return results
+    except Exception as e:
+        print(f"[GitHub GraphQL] Error: {e}, falling back to HTML", file=sys.stderr)
+        return fetch_github_trending_html(limit)
+
+
+def fetch_github_trending(limit: int) -> list[dict]:
+    """Fetch GitHub trending AI repos. Prefers GraphQL if token available."""
+    return fetch_github_trending_graphql(limit)
 def fetch_hf_papers(limit: int) -> list[dict]:
     """Fetch daily papers from HuggingFace via their public API."""
     try:
@@ -742,12 +817,27 @@ def main():
             except Exception as e:
                 print(f"  [{name}] error - {e}", file=sys.stderr)
 
+    # --- Deduplicate by URL hash ---
+    seen_urls = set()
+    unique_entries = []
+    for entry in all_entries:
+        url = entry.get("url", "")
+        if url:
+            url_hash = hash(url)
+            if url_hash not in seen_urls:
+                seen_urls.add(url_hash)
+                unique_entries.append(entry)
+            # else skip duplicate URL
+        else:
+            unique_entries.append(entry)
+    all_entries = unique_entries
+
     # --- Sort by time descending ---
     all_entries.sort(key=lambda x: x.get("time", ""), reverse=True)
 
     # --- Output ---
     output = json.dumps(all_entries, ensure_ascii=False, indent=2)
-    stats = f"[DONE] {source_count} sources | {len(all_entries)} entries"
+    stats = f"[DONE] {source_count} sources | {len(all_entries)} entries (deduped)"
     print(stats, file=sys.stderr)
 
     if args.outdir:
