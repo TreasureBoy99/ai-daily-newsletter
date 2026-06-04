@@ -42,6 +42,8 @@ jobs:
           python scripts/send_emails.py
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          QQ_EMAIL_TOKEN: ${{ secrets.QQ_EMAIL_TOKEN }}
+          QQ_EMAIL_ADDR: ${{ secrets.QQ_EMAIL_ADDR }}
 
       - name: Commit and Push changes
         run: |
