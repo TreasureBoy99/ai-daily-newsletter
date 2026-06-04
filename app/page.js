@@ -36,7 +36,7 @@ export default function Home() {
       setTimeout(() => setToast(null), 5000);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);,
+  }, []);
 
   // Theme init
   useEffect(() => {
