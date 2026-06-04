@@ -2,7 +2,7 @@
 
 import { Calendar, Moon, Sun } from 'lucide-react';
 
-export default function Header({ isDarkMode, toggleTheme, onCalendarClick }) {
+export default function Header({ isDarkMode, toggleTheme, onCalendarClick, onSubscribeClick }) {
   return (
     <header className="border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 bg-white/95 dark:bg-editorial-dark/95 backdrop-blur shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,6 +37,15 @@ export default function Header({ isDarkMode, toggleTheme, onCalendarClick }) {
               title="切换主题"
             >
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            <button
+              onClick={onSubscribeClick}
+              className="hidden sm:flex items-center space-x-1.5 text-xs font-semibold bg-editorial-accent hover:bg-indigo-600 text-white px-3 py-1.5 rounded-full transition-all shadow-sm"
+              title="订阅每日简报"
+            >
+              <span>📮</span>
+              <span>订阅</span>
             </button>
 
             <a

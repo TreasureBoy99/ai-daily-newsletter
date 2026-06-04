@@ -10,6 +10,7 @@ import ArticleList from './components/ArticleList';
 import ScrollNavigation from './components/ScrollNavigation';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import SubscribeModal from './components/SubscribeModal';
 import { formatDateHuman } from './lib/utils';
 
 export default function Home() {
@@ -25,6 +26,17 @@ export default function Home() {
   const [toast, setToast] = useState(null);
   const [visibleLimit, setVisibleLimit] = useState(10);
   const [showScrollButtons, setShowScrollButtons] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+
+  // Handle ?subscribed=true from email confirmation redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('subscribed') === 'true') {
+      setToast('订阅成功！欢迎开启每日 AI 情报之旅 🎉');
+      setTimeout(() => setToast(null), 5000);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);,
 
   // Theme init
   useEffect(() => {
@@ -161,6 +173,7 @@ export default function Home() {
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
           onCalendarClick={() => setIsMobileDrawerOpen(true)}
+          onSubscribeClick={() => setIsSubscribeModalOpen(true)}
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -236,6 +249,11 @@ export default function Home() {
         />
 
         <Toast message={toast} />
+
+        <SubscribeModal
+          isOpen={isSubscribeModalOpen}
+          onClose={() => setIsSubscribeModalOpen(false)}
+        />
 
         <MobileDrawer
           isOpen={isMobileDrawerOpen}

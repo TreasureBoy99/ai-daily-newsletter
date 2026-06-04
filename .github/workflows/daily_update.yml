@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 jobs:
   fetch_and_update:
@@ -35,6 +36,12 @@ jobs:
       - name: Update latest and index JSON
         run: |
           python scripts/update_index.py
+
+      - name: Send newsletter emails to subscribers
+        run: |
+          python scripts/send_emails.py
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 
       - name: Commit and Push changes
         run: |
