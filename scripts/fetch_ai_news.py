@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """AI Daily Newsletter - Unified news fetcher.
 
-Fetches from 20+ AI sources: RSS feeds, Hacker News, GitHub Trending,
-HuggingFace Papers, LinuxDo, and Reddit. Outputs unified JSON to stdout.
+Fetches from 100+ AI sources: RSS feeds, Hacker News, GitHub Trending,
+HuggingFace Papers, LinuxDo, Reddit, and more. Outputs unified JSON to stdout.
 
 Usage:
     python3 fetch_ai_news.py [--hours 24] [--limit 20] [--outdir PATH]
@@ -35,7 +35,9 @@ AI_KEYWORDS = re.compile(
     r"Foundation\s*Model|Fine[\s-]?tun|Embedding|Vector\s*DB|"
     r"Copilot|Midjourney|Stable\s*Diffusion|ChatGPT|"
     r"Mistral|Qwen|Phi-|Groq|vLLM|GGUF|LoRA|"
-    r"Computer\s*Vision|NLP|MLOps|GenAI|Generative"
+    r"Computer\s*Vision|NLP|MLOps|GenAI|Generative|"
+    r"Multi.*Agent|AutoGPT|LangChain|CrewAI|AutoGen|"
+    r"Sophon|Benchmark|Eval|Alignment|Safety"
     r")\b",
     re.IGNORECASE,
 )
@@ -59,10 +61,12 @@ def _curl_fetch(url: str, extra_headers: list[str], timeout: int = 20) -> str:
 
 
 # ---------------------------------------------------------------------------
-# RSS source registry
+# RSS source registry (100+ sources)
 # ---------------------------------------------------------------------------
 RSS_SOURCES = [
-    # --- Tier 1: 主流 AI 媒体 ---
+    # ========================================
+    # Tier 1: 主流 AI 媒体
+    # ========================================
     {
         "url": "https://venturebeat.com/category/ai/feed/",
         "name": "VentureBeat AI",
@@ -90,7 +94,20 @@ RSS_SOURCES = [
         "name": "AI News",
         "category": "announcements",
     },
-    # --- AI 公司博客 ---
+    {
+        "url": "https://www.wired.com/feed/category/ai/",
+        "name": "Wired AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.axios.com/technology/artificial-intelligence/rss",
+        "name": "Axios AI",
+        "category": "industry",
+    },
+
+    # ========================================
+    # AI 公司博客
+    # ========================================
     {
         "url": "https://openai.com/blog/rss.xml",
         "name": "OpenAI Blog",
@@ -119,9 +136,96 @@ RSS_SOURCES = [
     {
         "url": "https://ai.meta.com/blog/rss/",
         "name": "Meta AI Blog",
+        "category": "research",
+    },
+    {
+        "url": "https://blog.nvidia.com/ai/feed/",
+        "name": "NVIDIA AI Blog",
+        "category": "research",
+    },
+    {
+        "url": "https://www.mistral.ai/blog/feed/",
+        "name": "Mistral AI Blog",
+        "category": "announcements",
+    },
+    {
+        "url": "https://www.cohere.com/blog/rss.xml",
+        "name": "Cohere Blog",
+        "category": "research",
+    },
+    {
+        "url": "https://www.aws.amazon.com/blogs/machine-learning/feed/",
+        "name": "AWS ML Blog",
+        "category": "industry",
+    },
+    {
+        "url": "https://cloud.google.com/blog/products/ai-machine-learning/rss",
+        "name": "Google Cloud AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://blog.products.48n0.com/rss",
+        "name": "H (HuggingFace) Blog",
+        "category": "announcements",
+    },
+    {
+        "url": "https://www.x.ai/blog/rss",
+        "name": "xAI Blog",
+        "category": "announcements",
+    },
+
+    # ========================================
+    # AI 评估和基准 (NEW - 包括 Sophon)
+    # ========================================
+    {
+        "url": "https://sophon.at/feed.xml",
+        "name": "Sophon",
+        "category": "research",
+    },
+    {
+        "url": "https://huggingface.co/datasets/HuggingFaceH4/ai-benchmark-runs/rss",
+        "name": "HF Benchmarks",
+        "category": "research",
+    },
+    {
+        "url": "https://www.lmarena.ai/rss/",
+        "name": "LM Arena",
+        "category": "research",
+    },
+    {
+        "url": "https://www.artificialanalysis.org/rss",
+        "name": "Artificial Analysis",
+        "category": "research",
+    },
+    {
+        "url": "https://promptfoo.dev/rss.xml",
+        "name": "Promptfoo",
         "category": "tools",
     },
-    # --- AI Newsletters ---
+    {
+        "url": "https://www.paperswithcode.com/rss",
+        "name": "Papers with Code",
+        "category": "research",
+    },
+    {
+        "url": "https://www.mmlu.io/rss",
+        "name": "MMLU Benchmark",
+        "category": "research",
+    },
+    {
+        "url": "https://www.swebench.org/rss",
+        "name": "SWE Bench",
+        "category": "research",
+    },
+    {
+        "url": "https://www.humaneval.org/rss",
+        "name": "HumanEval",
+        "category": "research",
+    },
+
+    # ========================================
+    # AI Newsletters
+    # ========================================
     {
         "url": "https://www.latent.space/feed",
         "name": "Latent Space AINews",
@@ -148,7 +252,30 @@ RSS_SOURCES = [
         "name": "The Batch (Andrew Ng)",
         "category": "industry",
     },
-    # --- AI Bloggers ---
+    {
+        "url": "https://www.therobotbrains.ai/substack/feed",
+        "name": "Robot Brains",
+        "category": "research",
+    },
+    {
+        "url": "https://tlmr.substack.com/feed",
+        "name": "This Month in AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.ben-evans.com/benedictevans/rss",
+        "name": "Ben Evans",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.diffusion.blog/rss",
+        "name": "Diffusion Blog",
+        "category": "industry",
+    },
+
+    # ========================================
+    # AI 专家/博主
+    # ========================================
     {
         "url": "https://simonwillison.net/atom/everything/",
         "name": "Simon Willison",
@@ -175,6 +302,11 @@ RSS_SOURCES = [
         "category": "research",
     },
     {
+        "url": "https://lilianweng.github.io/posts/index.xml",
+        "name": "Lil'Log (Lilian Weng)",
+        "category": "research",
+    },
+    {
         "url": "https://semianalysis.com/feed/",
         "name": "SemiAnalysis",
         "category": "industry",
@@ -189,7 +321,35 @@ RSS_SOURCES = [
         "name": "Gary Marcus",
         "category": "policy",
     },
-    # --- Papers (Arxiv) ---
+    {
+        "url": "https://sebastianraschka.com/feed.xml",
+        "name": "Sebastian Raschka",
+        "category": "research",
+    },
+    {
+        "url": "https://eugeneyan.com/feed.xml",
+        "name": "Eugen Yan",
+        "category": "research",
+    },
+    {
+        "url": "https://vickiboykis.com/feed.xml",
+        "name": "Vicki Boykis",
+        "category": "research",
+    },
+    {
+        "url": "https://blog.fast.ai/feed.xml",
+        "name": "Fast.ai Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://stjermir.com/rss/",
+        "name": "Stjermir",
+        "category": "tools",
+    },
+
+    # ========================================
+    # 论文源 (Arxiv + 研究实验室)
+    # ========================================
     {
         "url": "http://export.arxiv.org/rss/cs.AI",
         "name": "Arxiv cs.AI",
@@ -200,26 +360,15 @@ RSS_SOURCES = [
         "name": "Arxiv cs.LG",
         "category": "research",
     },
-    # --- AI Agents & Self-Evolution (Specialized) ---
     {
-        "url": "https://lilianweng.github.io/posts/index.xml",
-        "name": "Lil'Log (Lilian Weng)",
+        "url": "http://export.arxiv.org/rss/cs.CL",
+        "name": "Arxiv cs.CL",
         "category": "research",
     },
     {
-        "url": "https://blog.langchain.dev/rss/",
-        "name": "LangChain Blog",
-        "category": "tools",
-    },
-    {
-        "url": "https://bair.berkeley.edu/blog/feed.xml",
-        "name": "BAIR Blog",
+        "url": "http://export.arxiv.org/rss/cs.CV",
+        "name": "Arxiv cs.CV",
         "category": "research",
-    },
-    {
-        "url": "https://huggingface.co/blog/feed.xml",
-        "name": "Hugging Face Blog",
-        "category": "tools",
     },
     {
         "url": "http://export.arxiv.org/rss/cs.MA",
@@ -227,18 +376,435 @@ RSS_SOURCES = [
         "category": "research",
     },
     {
+        "url": "http://export.arxiv.org/rss/cs.NE",
+        "name": "Arxiv cs.NE",
+        "category": "research",
+    },
+    {
+        "url": "https://bair.berkeley.edu/blog/feed.xml",
+        "name": "BAIR Blog",
+        "category": "research",
+    },
+    {
+        "url": "https://ai.stanford.edu/blog/feed.xml",
+        "name": "Stanford HAI",
+        "category": "research",
+    },
+    {
         "url": "https://crfm.stanford.edu/feed.xml",
         "name": "Stanford CRFM",
         "category": "research",
     },
-    # --- Product ---
+    {
+        "url": "https://www.nature.com/nmach/articles.rss",
+        "name": "Nature Machine Intelligence",
+        "category": "research",
+    },
+    {
+        "url": "https://www.science.org/rss/news/artificial-intelligence",
+        "name": "Science AI",
+        "category": "research",
+    },
+    {
+        "url": "https://research.google/blog/rss/",
+        "name": "Google Research AI",
+        "category": "research",
+    },
+    {
+        "url": "https://research.apple.com/blog/rss",
+        "name": "Apple Research AI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.microsoft.com/en-us/research/blog/feed/",
+        "name": "Microsoft Research",
+        "category": "research",
+    },
+    {
+        "url": "https://research.fb.com/category/artificial-intelligence/feed/",
+        "name": "Meta Research AI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.amazon.science/category/artificial-intelligence/feed/",
+        "name": "Amazon Science AI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.ibm.com/research/blog/category/artificial-intelligence/feed/",
+        "name": "IBM Research AI",
+        "category": "research",
+    },
+    {
+        "url": "https://research.nvidia.com/feed",
+        "name": "NVIDIA Research",
+        "category": "research",
+    },
+
+    # ========================================
+    # AI Agent 框架 (NEW)
+    # ========================================
+    {
+        "url": "https://blog.langchain.dev/rss/",
+        "name": "LangChain Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.crewai.com/rss.xml",
+        "name": "CrewAI Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.autogen.ai/rss.xml",
+        "name": "AutoGen Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.llamaindex.ai/blog/rss",
+        "name": "LlamaIndex Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.haystack.ai/blog/rss",
+        "name": "Haystack Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.dspy.ai/blog/rss",
+        "name": "DSPy Blog",
+        "category": "tools",
+    },
+
+    # ========================================
+    # 向量数据库 (NEW)
+    # ========================================
+    {
+        "url": "https://blog.pinecone.io/rss/",
+        "name": "Pinecone Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.weaviate.io/rss.xml",
+        "name": "Weaviate Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.qdrant.com/rss",
+        "name": "Qdrant Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.milvus.io/rss",
+        "name": "Milvus Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.chroma.ai/rss",
+        "name": "ChromaDB Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.lancedb.com/rss",
+        "name": "LanceDB Blog",
+        "category": "tools",
+    },
+
+    # ========================================
+    # AI 编程工具 (NEW)
+    # ========================================
+    {
+        "url": "https://blog.cursor.com/rss",
+        "name": "Cursor Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.replit.com/rss",
+        "name": "Replit AI",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.github.com/rss",
+        "name": "GitHub Copilot",
+        "category": "tools",
+    },
+    {
+        "url": "https://codeium.com/blog/rss",
+        "name": "Codeium Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.tabnine.com/rss",
+        "name": "Tabnine AI",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.sourcegraph.com/rss",
+        "name": "Sourcegraph AI",
+        "category": "tools",
+    },
+
+    # ========================================
+    # AI 可观测性 (NEW)
+    # ========================================
+    {
+        "url": "https://blog.arize.com/rss",
+        "name": "Arize AI",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.weightsbiases.com/rss",
+        "name": "Weights & Biases",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.comet.com/rss",
+        "name": "Comet ML",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.mlflow.org/blog/rss",
+        "name": "MLflow Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.neptune.ai/blog/rss",
+        "name": "Neptune.ai",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.clearml.com/blog/rss",
+        "name": "ClearML Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.helicone.com/blog/rss",
+        "name": "Helicone Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.braintrust.dev/blog/rss",
+        "name": "Braintrust",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.traceloop.com/blog/rss",
+        "name": "Traceloop Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://www.agentops.ai/blog/rss",
+        "name": "AgentOps Blog",
+        "category": "tools",
+    },
+
+    # ========================================
+    # AI 部署和推理平台 (NEW)
+    # ========================================
+    {
+        "url": "https://blog.replicate.com/rss",
+        "name": "Replicate Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.fal.ai/rss",
+        "name": "Fal.ai Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.baseten.co/rss",
+        "name": "Baseten Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.runpod.io/rss",
+        "name": "RunPod Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.vast.ai/rss",
+        "name": "Vast.ai",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.lambdalabs.com/rss",
+        "name": "Lambda Labs",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.vllm.ai/rss.xml",
+        "name": "vLLM Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.together.ai/rss",
+        "name": "Together AI",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.modular.com/blog/rss.xml",
+        "name": "Modular AI",
+        "category": "tools",
+    },
+
+    # ========================================
+    # AI 安全和对齐 (NEW)
+    # ========================================
+    {
+        "url": "https://www.alignmentforum.org/feed.xml",
+        "name": "Alignment Forum",
+        "category": "policy",
+    },
+    {
+        "url": "https://www.lesswrong.com/feed.xml",
+        "name": "LessWrong",
+        "category": "policy",
+    },
+    {
+        "url": "https://www.miri.org/rss",
+        "name": "MIRI Research",
+        "category": "research",
+    },
+    {
+        "url": "https://www.fhi.ox.ac.uk/rss",
+        "name": "Future of Humanity Institute",
+        "category": "research",
+    },
+    {
+        "url": "https://www.cset.georgetown.edu/rss",
+        "name": "CSET AI",
+        "category": "policy",
+    },
+    {
+        "url": "https://www.eleuther.ai/rss",
+        "name": "EleutherAI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.conjecture.dev/rss",
+        "name": "Conjecture AI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.redwoodresearch.org/rss",
+        "name": "Redwood Research",
+        "category": "research",
+    },
+    {
+        "url": "https://www.aiimpacts.org/rss",
+        "name": "AI Impacts",
+        "category": "research",
+    },
+    {
+        "url": "https://www.epoch.ai/rss",
+        "name": "Epoch AI Research",
+        "category": "research",
+    },
+
+    # ========================================
+    # AI 投资和行业分析 (NEW)
+    # ========================================
+    {
+        "url": "https://www.a16z.com/feed/",
+        "name": "a16z AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.sequoiacap.com/rss/",
+        "name": "Sequoia AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.greylock.com/feed",
+        "name": "Greylock AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.ft.com/world/companies/artificial-intelligence?rss",
+        "name": "FT AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.economist.com/rss/the-world-ahead/artificial-intelligence",
+        "name": "Economist AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.information.com/artificial-intelligence/rss",
+        "name": "The Information AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.bloomberg.com/ai/rss",
+        "name": "Bloomberg AI",
+        "category": "industry",
+    },
+    {
+        "url": "https://www.reuters.com/technology/artificial-intelligence/rss",
+        "name": "Reuters AI",
+        "category": "industry",
+    },
+
+    # ========================================
+    # 中文 AI 资讯
+    # ========================================
+    {
+        "url": "https://www.jiqizhixin.com/rss",
+        "name": "机器之心",
+        "category": "industry",
+    },
+
+    # ========================================
+    # 产品和工具发现
+    # ========================================
     {
         "url": "https://www.producthunt.com/feed",
         "name": "Product Hunt",
         "category": "tools",
     },
-    # --- Twitter/X via autocli ---
-    # (handled separately in Phase 2, not via RSS)
+    {
+        "url": "https://news.ycombinator.com/rss",
+        "name": "Hacker News",
+        "category": "tools",
+        "ai_filter": True,
+    },
+
+    # ========================================
+    # HuggingFace 生态
+    # ========================================
+    {
+        "url": "https://huggingface.co/blog/feed.xml",
+        "name": "Hugging Face Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://huggingface.co/datasets/rss",
+        "name": "HuggingFace Datasets",
+        "category": "tools",
+    },
+    {
+        "url": "https://huggingface.co/models/rss",
+        "name": "HuggingFace Models",
+        "category": "tools",
+    },
+
+    # ========================================
+    # 多模态 AI
+    # ========================================
+    {
+        "url": "https://stability.ai/blog/feed.xml",
+        "name": "Stability AI",
+        "category": "research",
+    },
+    {
+        "url": "https://www.elevenlabs.io/blog/rss",
+        "name": "ElevenLabs Blog",
+        "category": "tools",
+    },
+    {
+        "url": "https://blog.play.ht/rss",
+        "name": "Play.ht AI",
+        "category": "tools",
+    },
 ]
 
 
@@ -711,6 +1277,8 @@ def fetch_github_trending_graphql(limit: int) -> list[dict]:
 def fetch_github_trending(limit: int) -> list[dict]:
     """Fetch GitHub trending AI repos. Prefers GraphQL if token available."""
     return fetch_github_trending_graphql(limit)
+
+
 def fetch_hf_papers(limit: int) -> list[dict]:
     """Fetch daily papers from HuggingFace via their public API."""
     try:
@@ -728,11 +1296,11 @@ try:
             'source': 'HuggingFace Papers',
             'category': 'research',
             'title': p.get('title', ''),
-            'url': f\"https://huggingface.co/papers/{p.get('id', '')}\",
+            'url': f"https://huggingface.co/papers/{p.get('id', '')}",
             'time': p.get('publishedAt', ''),
             'summary': (p.get('summary', '') or '')[:500],
             'heat': str(p.get('upvotes', 0)),
-            'github_url': f\"https://arxiv.org/abs/{p.get('id', '')}\",
+            'github_url': f"https://arxiv.org/abs/{p.get('id', '')}",
         })
     print(json.dumps(papers, ensure_ascii=False))
 except Exception as e:
@@ -770,7 +1338,7 @@ def main():
 
     # --- Phase 1: Concurrent RSS fetch ---
     print(f"[INFO] Fetching {len(RSS_SOURCES)} RSS sources (window: {args.hours}h)...", file=sys.stderr)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
         futures = {
             executor.submit(fetch_rss, src, cutoff, args.limit): src["name"]
             for src in RSS_SOURCES

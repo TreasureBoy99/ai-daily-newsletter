@@ -1,6 +1,6 @@
 # 🤖 AI Daily Newsletter
 
-聚合 40+ 顶级 AI、Agent 及前沿研究信息源，自动生成每日 AI 新闻简报，支持邮件订阅推送 + 优雅的 WebUI 阅读器。
+聚合 100+ 顶级 AI、Agent 及前沿研究信息源，自动生成每日 AI 新闻简报，支持邮件订阅推送 + 优雅的 WebUI 阅读器。
 
 [![Vercel](https://img.shields.io/badge/Vercel-部署-brightgreen)](https://vercel.com/new/clone?repository-url=https://github.com/adminlove520/ai-daily-newsletter)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
@@ -11,7 +11,7 @@
 
 ## 🌟 功能特性
 
-- **40+ 顶级数据源**：主流 AI 媒体、公司博客、顶级 Newsletters、大 V 博客、研究机构、开源生态、Multi-Agent 论文。
+- **100+ 顶级数据源**：主流 AI 媒体、公司博客、顶级 Newsletters、大 V 博客、研究机构、开源生态、AI 评估基准、Agent 框架、向量数据库、AI 编程工具、可观测性平台。
 - **每日自动更新**：GitHub Actions 每日凌晨自动抓取，完全零服务器成本（Serverless）。
 - **优雅的 WebUI**：报刊风格 SPA，支持历史归档日历、深色模式、客户端模糊搜索、分类过滤。
 - **邮件订阅推送**（SaaS）：邮箱订阅 → 确认邮件 → 每日自动发送，带退订链接。
@@ -146,11 +146,20 @@ docker run -d -p 3000:3000 \
 
 ---
 
-## 📡 数据源（40+）
+## 📡 数据源（100+）
 
 覆盖：OpenAI/Anthropic/DeepMind/Google AI Blog、Latent Space/The Batch/Lil'Log、HuggingFace Blog、Arxiv cs.MA、GitHub Trending、Hacker News、LinuxDo、Reddit r/MachineLearning 等。
 
-详见上方数据源列表。
+**v2.0 新增**：
+- **AI 评估和基准**：Sophon、LM Arena、Artificial Analysis、Papers with Code、MMLU、SWE Bench
+- **AI Agent 框架**：CrewAI、AutoGen、LlamaIndex、Haystack、DSPy
+- **向量数据库**：Pinecone、Weaviate、Qdrant、Milvus、ChromaDB、LanceDB
+- **AI 编程工具**：Cursor、Replit AI、GitHub Copilot、Codeium、Tabnine
+- **AI 可观测性**：Arize、Weights & Biases、Comet ML、MLflow、Neptune、ClearML、Helicone
+- **AI 安全和对齐**：Alignment Forum、LessWrong、MIRI、EleutherAI、Epoch AI
+- **AI 投资机构**：a16z、Sequoia、Greylock
+
+详见 `scripts/fetch_ai_news.py` 中完整数据源列表。
 
 ---
 
