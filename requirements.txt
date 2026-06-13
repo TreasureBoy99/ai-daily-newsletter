@@ -4,3 +4,4 @@ beautifulsoup4
 markdown
 playwright
 Pillow
+mcp

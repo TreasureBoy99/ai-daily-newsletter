@@ -1,186 +1,172 @@
 # 🤖 AI Daily Newsletter
 
-聚合 100+ 顶级 AI、Agent 及前沿研究信息源，自动生成每日 AI 新闻简报，支持邮件订阅推送 + 优雅的 WebUI 阅读器。
+聚合 30+ AI 信息源，自动生成每日 AI 新闻简报。支持 RSS、Hacker News、GitHub Trending、HuggingFace Papers、LinuxDo 和 Reddit。
 
-[![Vercel](https://img.shields.io/badge/Vercel-部署-brightgreen)](https://vercel.com/new/clone?repository-url=https://github.com/adminlove520/ai-daily-newsletter)
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+[English](./README.en.md)
 
-[🌐 在线访问](https://ai-daily-newsletter.vercel.app) · [📧 订阅简报](#-邮件订阅) · [📖 English](./README.en.md)
+## 功能特性
 
----
+- **35+ 数据源**：主流 AI 媒体、公司博客、 newsletters、论文、社区、大 V 博客、分析报告
+- **AI 关键词过滤**：自动过滤非 AI 相关内容
+- **多平台支持**：RSS、Hacker News Algolia API、网页抓取
+- **Cloudflare 绕过**：LinuxDo/Reddit 使用 curl 绕过 TLS 指纹
+- **并行抓取**：多线程并发抓取，速度快
+- **时间窗口过滤**：只保留最近 N 小时的内容
+- **JSON 输出**：标准化格式，方便后续处理
 
-## 🌟 功能特性
+## 数据源
 
-- **100+ 顶级数据源**：主流 AI 媒体、公司博客、顶级 Newsletters、大 V 博客、研究机构、开源生态、AI 评估基准、Agent 框架、向量数据库、AI 编程工具、可观测性平台。
-- **每日自动更新**：GitHub Actions 每日凌晨自动抓取，完全零服务器成本（Serverless）。
-- **优雅的 WebUI**：报刊风格 SPA，支持历史归档日历、深色模式、客户端模糊搜索、分类过滤。
-- **邮件订阅推送**（SaaS）：邮箱订阅 → 确认邮件 → 每日自动发送，带退订链接。
-- **AI 智能过滤**：正则关键词精准过滤无关条目，保持简报高含金量。
-- **Bypass Cloudflare**：LinuxDo/Reddit 智能 curl 绕过 TLS 指纹防护。
-- **并行抓取**：ThreadPoolExecutor 多线程并发，极速收集全部信息流。
+### AI 新闻（RSS）
+- VentureBeat AI、TechCrunch AI、The Verge AI、MIT Technology Review AI、AI News
 
----
+### AI 公司博客
+- OpenAI Blog、Anthropic Blog、Google AI Blog、DeepMind Blog、Microsoft AI Blog、Meta AI Blog
 
-## 🚀 快速上手
+### AI Newsletters
+- Latent Space AINews、Interconnects、One Useful Thing、ChinAI、The Batch
 
-### 1. 安装依赖
+### AI Bloggers
+- Simon Willison、Gary Marcus、Andrej Karpathy、Jay Alammar、Lilian Weng
+
+### 论文
+- Arxiv cs.AI、Arxiv cs.LG、HuggingFace Papers
+
+### 社区
+- Hacker News（Algolia API + AI 关键词）
+- GitHub Trending（AI 相关项目）
+- **LinuxDo**（新增，中文技术社区）
+- **Reddit r/MachineLearning + r/artificial**（新增，国际 AI 社区）
+
+### 产品
+- Product Hunt
+
+## 安装
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 抓取每日新闻简报
+## 使用方法
+
+### 基本用法
 
 ```bash
-# 抓取最近 24 小时并输出到 stdout
-python scripts/fetch_ai_news.py
+# 抓取最近 24 小时的所有 AI 新闻
+python3 scripts/fetch_ai_news.py
 
-# 抓取最近 48 小时，输出到 data/ 目录
-python scripts/fetch_ai_news.py --hours 48 --outdir data
+# 抓取最近 48 小时的内容
+python3 scripts/fetch_ai_news.py --hours 48
 
-# 更新历史索引
-python scripts/update_index.py
+# 每个源最多抓取 30 条
+python3 scripts/fetch_ai_news.py --limit 30
+
+# 保存到文件
+python3 scripts/fetch_ai_news.py --outdir ./output
 ```
 
-### 3. 本地预览 WebUI
+### MCP Server（AI 助手直接调用）
 
 ```bash
-npm install
-npm run dev
-# 打开 http://localhost:3000
+# 安装 MCP 依赖
+pip install mcp
+
+# 启动 MCP Server（stdio 模式，供 MCP 客户端调用）
+python3 mcp_server.py
+
+# HTTP 模式
+python3 mcp_server.py --transport http --port 8080
 ```
 
----
+**OpenClaw 配置** (`openclaw.json`)：
+```json
+{
+  "mcp": {
+    "servers": {
+      "ai-daily-newsletter": {
+        "command": "python",
+        "args": ["C:/path/to/ai-daily-newsletter/mcp_server.py"]
+      }
+    }
+  }
+}
+```
 
-## 📧 邮件订阅（SaaS 功能）
+**Claude Desktop 配置** (`claude_desktop_config.json`)：
+```json
+{
+  "mcpServers": {
+    "ai-daily-newsletter": {
+      "command": "python",
+      "args": ["/path/to/mcp_server.py"]
+    }
+  }
+}
+```
 
-### 用户订阅流程
+配置后 AI 助手可以直接调用以下工具：
 
-1. 点击网页右上角 **📮 订阅** 按钮
-2. 输入邮箱地址提交
-3. 查收确认邮件，点击确认链接
-4. 每日凌晨自动收到当日精选简报
+| Tool | 说明 |
+|------|------|
+| `adn_fetch_news` | 抓取多源 AI 新闻 |
+| `adn_fetch_papers` | 抓取 HuggingFace 论文 |
+| `adn_render` | 从 JSON 渲染 HTML |
+| `adn_run_daily` | 一键抓取+渲染日报 |
+| `adn_list_sources` | 列出所有信息源 |
 
-### 部署订阅功能
+### OpenClaw Skill 集成
 
-#### 方式一：Vercel 一键部署（推荐）
-
-1. Fork 本仓库
-2. 在 [Resend](https://resend.com) 注册，获取 API Key
-3. Vercel 导入仓库 → Environment Variables → 添加 `RESEND_API_KEY`
-4. Deploy 完成，`data/subscribers.json` 会由 Vercel FS 自动持久化
-
-> **注意**：Vercel Hobby 计划的 Serverless Function 有 100MB 临时磁盘写入限制。
-> `data/subscribers.json` 和 `data/confirmations.json` 文件较轻，足够数千订阅者使用。
-> 如需更大规模，推荐升级至 Vercel Pro 或切换至 Upstash Redis 存储。
-
-#### 方式二：自托管（Docker）
+将 `ai-daily-newsletter` skill 安装到 OpenClaw workspace：
 
 ```bash
-docker build -t ai-newsletter .
-docker run -d -p 3000:3000 \
-  -e RESEND_API_KEY=re_xxxxx \
-  -v $(pwd)/data:/app/data \
-  ai-newsletter
+cp -r ai-daily-newsletter ~/.openclaw/workspace/skills/
 ```
 
-#### 方式三：配合 GitHub Actions（免费方案）
+在 OpenClaw 中说以下关键词即可触发：
+- "AI 日报"
+- "AI 新闻"
+- "今日 AI"
+- "AI daily"
 
-订阅数据保存在 GitHub 仓库的 `data/subscribers.json`，每日 Action 读取并发送邮件：
+## 输出格式
 
-1. Fork 并开启仓库
-2. Settings → Secrets → 添加 `RESEND_API_KEY`
-3. GitHub Actions 会自动在每日更新后发送邮件
-
----
-
-## 🛠 部署
-
-### Vercel WebUI 部署
-
-本项目专为 Vercel 静态托管 + Serverless Functions 优化。
-
-1. Fork 本项目
-2. 登录 [Vercel](https://vercel.com)，导入你的 Fork 仓库
-3. 点击 **Deploy**（无需 Build Step）
-4. 启用 GitHub Actions 每日定时更新（`.github/workflows/daily_update.yml`）
-
-### 订阅数据存储说明
-
-| 存储方式 | 说明 |
-|---------|------|
-| Vercel 本地 FS | Hobby Plan 可用，适合 ~5000 订阅者 |
-| Upstash Redis | 推荐生产环境，零维护 |
-| GitHub Actions | 免费，通过 commit 存储订阅数据 |
-
----
-
-## 📂 目录结构
-
-```
-.
-├── .github/workflows/
-│   └── daily_update.yml     # GitHub Actions 每日自动抓取 + 发邮件
-├── app/
-│   ├── api/
-│   │   ├── subscribe/       # POST 订阅接口
-│   │   ├── confirm/         # GET 确认订阅 token
-│   │   ├── unsubscribe/     # POST 退订接口
-│   │   └── news/            # 现有新闻 API
-│   ├── components/
-│   │   ├── SubscribeModal.jsx  # 订阅弹窗组件
-│   │   └── ...
-│   └── page.js
-├── data/
-│   ├── subscribers.json     # 订阅者数据（首次订阅后自动创建）
-│   ├── confirmations.json   # 待确认 token（24h 过期）
-│   ├── index.json
-│   └── latest.json
-├── scripts/
-│   ├── fetch_ai_news.py     # 多线程抓取核心
-│   ├── update_index.py      # 索引更新
-│   └── send_emails.py       # 邮件发送脚本
-├── requirements.txt
-└── vercel.json
+```json
+[
+  {
+    "source": "VentureBeat AI",
+    "category": "industry",
+    "title": "OpenAI 发布 GPT-5",
+    "url": "https://venturebeat.com/...",
+    "time": "2026-05-25T10:00:00Z",
+    "summary": "..."
+  },
+  {
+    "source": "Hacker News",
+    "category": "community",
+    "title": "Show HN: 本地运行 LLM 的新方法",
+    "url": "https://news.ycombinator.com/item?id=...",
+    "time": "2026-05-25T09:30:00Z",
+    "heat": "342",
+    "hn_url": "https://news.ycombinator.com/item?id=..."
+  }
+]
 ```
 
----
+### Category 分类体系
 
-## 📡 数据源（100+）
+| Category | 含义 |
+|----------|------|
+| `announcements` | 产品发布、模型发布、重大公告 |
+| `research` | 学术突破、研究论文、新技术 |
+| `industry` | 融资、收购、合作、市场趋势 |
+| `tools` | AI 工具、框架、开源项目、实际应用 |
+| `policy` | AI 监管、安全讨论、社会影响 |
+| `community` | HN/Reddit/社区热议 |
 
-覆盖：OpenAI/Anthropic/DeepMind/Google AI Blog、Latent Space/The Batch/Lil'Log、HuggingFace Blog、Arxiv cs.MA、GitHub Trending、Hacker News、LinuxDo、Reddit r/MachineLearning 等。
+## 环境要求
 
-**v2.0 新增**：
-- **AI 评估和基准**：Sophon、LM Arena、Artificial Analysis、Papers with Code、MMLU、SWE Bench
-- **AI Agent 框架**：CrewAI、AutoGen、LlamaIndex、Haystack、DSPy
-- **向量数据库**：Pinecone、Weaviate、Qdrant、Milvus、ChromaDB、LanceDB
-- **AI 编程工具**：Cursor、Replit AI、GitHub Copilot、Codeium、Tabnine
-- **AI 可观测性**：Arize、Weights & Biases、Comet ML、MLflow、Neptune、ClearML、Helicone
-- **AI 安全和对齐**：Alignment Forum、LessWrong、MIRI、EleutherAI、Epoch AI
-- **AI 投资机构**：a16z、Sequoia、Greylock
+- Python 3.10+
+- 需要 `curl` 命令（用于 LinuxDo 和 Reddit）
 
-详见 `scripts/fetch_ai_news.py` 中完整数据源列表。
+## License
 
----
-
-## 🤖 OpenClaw / Hermes Agent 集成
-
-```bash
-cp SKILL.md ~/.openclaw/workspace/skills/ai-daily-newsletter.md
-```
-
----
-
-## 🔧 环境变量
-
-| 变量 | 必需 | 说明 |
-|------|------|------|
-| `RESEND_API_KEY` | 订阅功能必需 | [Resend](https://resend.com) API Key |
-| `UPSTASH_REDIS_REST_URL` | 可选 | 替代本地 FS 的 Redis 存储 |
-| `UPSTASH_REDIS_REST_TOKEN` | 可选 | Upstash Redis Token |
-
----
-
-## 📝 License
-
-MIT License.
+MIT
