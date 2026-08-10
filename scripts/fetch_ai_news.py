@@ -752,6 +752,19 @@ RSS_SOURCES = [
         "name": "机器之心",
         "category": "industry",
     },
+    # ========================================
+    # Linux.do Reddit资讯
+    # ========================================
+    {
+        "url": "https://rssmonitor.zeabur.app/telegram/channel/linuxdoit",
+        "name": "Linux.do",
+        "category": "untitled",
+    },
+    {
+        "url": "https://rssmonitor.zeabur.app/telegram/channel/golangredditrss",
+        "name": "Reddit精选",
+        "category": "untitled",
+    },
 
     # ========================================
     # 产品和工具发现
